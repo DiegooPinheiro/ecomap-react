@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,body,#root { height: 100%; }
+#map { height: calc(100vh - 64px); width: 100%; } /* se usar header com 64px */
+
+/* DEBUG: visual aid sempre visível temporariamente para verificar se o container existe */
+#map { background: #f3f4f6; border: 2px solid #000000; }
+
+/* garantir que o container do Leaflet preencha o elemento pai */
+.leaflet-container { width: 100% !important; height: 90% !important; }
