@@ -2,7 +2,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2');
+const sqlite3 = require('sqlite3').verbose();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
@@ -27,19 +27,31 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🧩 Conexão com MySQL
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || '',
-  database: process.env.DB_NAME || 'recicla_db'
-});
-
-db.connect(err => {
+// 🧩 Conexão com SQLite
+const db = new sqlite3.Database('./database.db', (err) => {
   if (err) {
-    console.error('❌ Erro ao conectar ao MySQL:', err);
+    console.error('❌ Erro ao conectar ao SQLite:', err);
   } else {
-    console.log('✅ Conectado ao MySQL');
+    console.log('✅ Conectado ao SQLite');
+    // Criar tabelas se não existirem
+    db.run(`CREATE TABLE IF NOT EXISTS usuarios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      senha TEXT NOT NULL
+    )`);
+    db.run(`CREATE TABLE IF NOT EXISTS pontos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      address TEXT NOT NULL,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      tipo TEXT NOT NULL,
+      horario TEXT,
+      status TEXT DEFAULT 'pendente',
+      usuario_id INTEGER,
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    )`);
   }
 });
 
@@ -60,7 +72,7 @@ app.post('/api/register', async (req, res) => {
   if (!nome || !email || !senha) return res.status(400).json({ error: 'Campos obrigatórios' });
 
   const hash = await bcrypt.hash(senha, 10);
-  db.query('INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)', [nome, email, hash], (err) => {
+  db.run('INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)', [nome, email, hash], function(err) {
     if (err) return res.status(500).json({ error: 'Erro ao registrar usuário' });
     res.json({ message: 'Usuário registrado com sucesso' });
   });
@@ -69,10 +81,9 @@ app.post('/api/register', async (req, res) => {
 // 🔐 Login
 app.post('/api/login', (req, res) => {
   const { email, senha } = req.body;
-  db.query('SELECT * FROM usuarios WHERE email = ?', [email], async (err, results) => {
-    if (err || results.length === 0) return res.status(401).json({ error: 'Credenciais inválidas' });
+  db.get('SELECT * FROM usuarios WHERE email = ?', [email], async (err, user) => {
+    if (err || !user) return res.status(401).json({ error: 'Credenciais inválidas' });
 
-    const user = results[0];
     const match = await bcrypt.compare(senha, user.senha);
     if (!match) return res.status(401).json({ error: 'Senha incorreta' });
 
@@ -84,10 +95,10 @@ app.post('/api/login', (req, res) => {
 // ♻️ Cadastrar ponto
 app.post('/api/pontos', verificarToken, (req, res) => {
   const { title, address, lat, lng, tipo, horario } = req.body;
-  db.query(
+  db.run(
     'INSERT INTO pontos (title, address, lat, lng, tipo, horario, status, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     [title, address, lat, lng, tipo, horario, 'pendente', req.user.id],
-    (err) => {
+    function(err) {
       if (err) return res.status(500).json({ error: 'Erro ao adicionar ponto' });
       res.json({ message: 'Ponto enviado para aprovação' });
     }
@@ -96,9 +107,9 @@ app.post('/api/pontos', verificarToken, (req, res) => {
 
 // 🧭 Listar pontos
 app.get('/api/pontos', (req, res) => {
-  db.query('SELECT * FROM pontos WHERE status = "aprovado"', (err, results) => {
+  db.all('SELECT * FROM pontos WHERE status = "aprovado"', [], (err, rows) => {
     if (err) return res.status(500).json({ error: 'Erro ao buscar pontos' });
-    res.json(results);
+    res.json(rows);
   });
 });
 
