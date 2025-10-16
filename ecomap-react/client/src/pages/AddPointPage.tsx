@@ -1,22 +1,25 @@
 import { useState } from 'react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function AddPointPage() {
   const [form, setForm] = useState({ title: '', address: '', lat: '', lng: '', tipo: 'eletronico', horario: '' });
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (!user) { alert('Faça login primeiro'); return; }
+
     try {
       await api.post('/api/pontos', {
         ...form,
-        lat: form.lat ? Number(form.lat) : null,
-        lng: form.lng ? Number(form.lng) : null
+        lat: Number(form.lat),
+        lng: Number(form.lng)
       });
       alert('Ponto enviado para aprovação');
-      location.href = '/';
+      navigate('/');
     } catch (err: any) {
       alert(err?.response?.data?.error || err.message || 'Erro');
     }

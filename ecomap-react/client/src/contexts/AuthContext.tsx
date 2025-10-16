@@ -1,60 +1,74 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
-import axios from 'axios';
+// src/contexts/AuthContext.tsx
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import api from '../api';
 
 type User = {
   id: number;
-  name: string;
+  nome: string;
   email: string;
+  is_admin: number;
 };
 
 type AuthContextType = {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  loading: boolean;
+  login: (email: string, senha: string) => Promise<void>;
   logout: () => void;
+  register: (nome: string, email: string, senha: string) => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem('user');
-    return stored ? JSON.parse(stored) : null;
-  });
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const api = axios.create({
-    baseURL: 'http://localhost:3001/api', // rota do backend
-  });
+  // Carregar usuário do token
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Verificar token no backend
+      api.get('/api/me')
+        .then(res => setUser(res.data.user))
+        .catch(() => {
+          localStorage.removeItem('token');
+          setUser(null);
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, []);
 
-  // login
-  const login = async (email: string, password: string) => {
-    const res = await api.post('/login', { email, password });
-    setUser(res.data.user);
-    localStorage.setItem('user', JSON.stringify(res.data.user));
+  // Login
+  const login = async (email: string, senha: string) => {
+    const res = await api.post('/api/login', { email, senha });
+    const { token, user } = res.data;
+    localStorage.setItem('token', token);
+    setUser(user);
   };
 
-  // cadastro
-  const register = async (name: string, email: string, password: string) => {
-    const res = await api.post('/register', { name, email, password });
-    setUser(res.data.user);
-    localStorage.setItem('user', JSON.stringify(res.data.user));
-  };
-
+  // Logout
   const logout = () => {
+    localStorage.removeItem('token');
     setUser(null);
-    localStorage.removeItem('user');
+  };
+
+  // Registro
+  const register = async (nome: string, email: string, senha: string) => {
+    await api.post('/api/register', { nome, email, senha });
+    // Logar automaticamente após registro
+    await login(email, senha);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-// Hook de fácil acesso
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
-};
+// Hook para usar contexto
+export function useAuth() {
+  return useContext(AuthContext);
+}

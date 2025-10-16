@@ -1,4 +1,3 @@
-//LoginPage.tsx
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -47,48 +46,51 @@ export default function LoginPage() {
   };
 
   return (
-    <div>
+    <div className="p-4 max-w-md mx-auto flex flex-col gap-4">
       {/* LOGIN */}
-      <h2>Login</h2>
-      <form onSubmit={handleLogin}>
+      <h2 className="text-xl font-bold">Login</h2>
+      <form onSubmit={handleLogin} className="flex flex-col gap-2">
         <input
           placeholder="Email"
           value={loginEmail}
           onChange={(e) => setLoginEmail(e.target.value)}
-          
+          className="p-2 border"
         />
         <input
           placeholder="Senha"
           type="password"
           value={loginPassword}
           onChange={(e) => setLoginPassword(e.target.value)}
-          
+          className="p-2 border"
         />
-        <button>Entrar</button>
+        <button className="p-2 bg-sky-600 text-white">Entrar</button>
       </form>
 
       <hr/>
 
       {/* CADASTRO */}
-      <h3>Cadastrar</h3>
-      <form onSubmit={handleRegister}>
+      <h3 className="text-lg font-bold">Cadastrar</h3>
+      <form onSubmit={handleRegister} className="flex flex-col gap-2">
         <input
           placeholder="Nome"
           value={registerName}
           onChange={(e) => setRegisterName(e.target.value)}
+          className="p-2 border"
         />
         <input
           placeholder="Email"
           value={registerEmail}
           onChange={(e) => setRegisterEmail(e.target.value)}
+          className="p-2 border"
         />
         <input
           placeholder="Senha"
           type="password"
           value={registerPassword}
           onChange={(e) => setRegisterPassword(e.target.value)}
+          className="p-2 border"
         />
-        <button>Cadastrar</button>
+        <button className="p-2 bg-green-600 text-white">Cadastrar</button>
       </form>
     </div>
   );
